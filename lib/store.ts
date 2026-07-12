@@ -2,6 +2,14 @@
 
 import { Position, StrategyConfig } from "./types";
 import { DEGEN } from "./presets";
+import type { EncryptedBlob } from "./localWallet";
+
+export interface LocalWalletVault {
+  publicKey: string;
+  secretType: "mnemonic" | "privateKey";
+  encrypted: EncryptedBlob;
+  createdAt: number;
+}
 
 const KEYS = {
   config: "profit.config.v1",
@@ -9,6 +17,7 @@ const KEYS = {
   watchlist: "profit.watchlist.v1",
   blacklist: "profit.blacklist.v1",
   killSwitch: "profit.killswitch.v1",
+  vault: "profit.localWalletVault.v1",
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -64,5 +73,16 @@ export const store = {
   },
   setKillSwitch(on: boolean) {
     write(KEYS.killSwitch, on);
+  },
+
+  getVault(): LocalWalletVault | null {
+    return read<LocalWalletVault | null>(KEYS.vault, null);
+  },
+  setVault(vault: LocalWalletVault) {
+    write(KEYS.vault, vault);
+  },
+  deleteVault() {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem(KEYS.vault);
   },
 };

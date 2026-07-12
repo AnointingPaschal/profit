@@ -40,10 +40,33 @@ config/positions out of localStorage. See "Next steps" below.
 - `/app` — Next.js 14 App Router dashboard (Discover, Token Detail, Positions, Trade,
   Wallet, Config)
 - `/lib` — shared types, DexScreener/Jupiter/RugCheck clients, formatting helpers,
-  strategy presets, localStorage store
-- `/components` — wallet-adapter provider, bottom tab bar, risk badge
+  strategy presets, localStorage store, local-wallet key generation/encryption
+- `/components` — wallet-adapter provider, bottom tab bar, risk badge, local wallet card,
+  holdings list
 - `/worker` — standalone always-on sniper bot (scanner → rug check → buy → monitor → sell)
   with its own `package.json`, `.env.example`, and `Dockerfile`
+
+## The built-in wallet (Wallet page)
+
+The Wallet page can create a brand new Solana wallet, or import an existing one via seed
+phrase or private key — all client-side.
+
+- **Generation**: standard BIP39 mnemonic + BIP44 derivation path `m/44'/501'/0'/0'`
+  (the same convention Phantom and Solflare use), via `bip39` + `ed25519-hd-key`. A seed
+  phrase generated here restores to the same address in those wallets, and vice versa.
+- **Storage**: the seed phrase or private key is encrypted in the browser with
+  AES-GCM-256 (key derived via PBKDF2, 150k iterations) using a password you set, and
+  saved only in `localStorage`. Nothing is ever sent to a server — there is no API route
+  that touches key material.
+- **Holdings**: any address (this local wallet, a connected Phantom/Solflare wallet, or
+  the bot wallet) is looked up directly on-chain (`getParsedTokenAccountsByOwner` + SOL
+  balance) and enriched with live DexScreener prices. This is why holdings show up
+  correctly even if the tokens were originally bought from a different wallet app —
+  balances belong to the address on-chain, not to whichever app made the purchase.
+- **Limits of this MVP**: `localStorage` is per-browser (clearing site data or switching
+  devices loses access — the seed phrase/private key is the only real backup), and a
+  browser is a softer security boundary than a hardware wallet or a dedicated extension.
+  Treat any wallet created or imported here as a hot wallet for small, disposable amounts.
 
 ## Local development
 
