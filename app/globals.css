@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background-color: #0B0E11;
+  color: #E6E9ED;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+.card {
+  @apply bg-surface border border-border rounded-xl2 p-4;
+}
+
+.pill {
+  @apply text-xs px-2 py-0.5 rounded-full font-medium;
+}
+
+.tabbar-safe {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}

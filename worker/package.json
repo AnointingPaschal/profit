@@ -1,0 +1,25 @@
+{
+  "name": "profit-worker",
+  "version": "0.1.0",
+  "description": "Solana low-mcap sniper bot with rug checks, position sizing, and auto exits. Educational scaffold — not financial advice.",
+  "main": "dist/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.95.3",
+    "@solana/spl-token": "^0.4.9",
+    "bs58": "^5.0.0",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/node-fetch": "^2.6.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
