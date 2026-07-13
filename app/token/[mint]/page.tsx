@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { DexPair, RugReport } from "@/lib/types";
-import { formatUsd, formatPct, formatAge, shortAddr } from "@/lib/format";
+import { formatUsd, formatTokenPrice, formatPct, formatAge, shortAddr } from "@/lib/format";
 import { store } from "@/lib/store";
 import { ArrowLeft, Star, Copy, Globe, ExternalLink, ShieldCheck, ShieldAlert, Ban } from "lucide-react";
 import clsx from "clsx";
@@ -28,11 +28,15 @@ export default function TokenPage() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Snapshot of price/MC/liquidity at first load
-  const [snap, setSnap] = useState<{ priceUsd: number; marketCap: number; liquidity: number } | null>(null);
+  // Snapshot of price/MC/liquidity at first load — persists via store
+  const [snap, setSnap] = useState<{ priceUsd: number; marketCap: number; liquidity: number; capturedAt?: number } | null>(null);
 
   useEffect(() => {
     setWatchlisted(store.getWatchlist().includes(mint));
+    // Load persisted snapshot first so "At fetch" is never blank
+    const stored = store.getSnapshots()[mint];
+    if (stored) setSnap(stored);
+
     const load = async () => {
       try {
         const res = await fetch(`/api/token/${mint}`);
@@ -41,11 +45,14 @@ export default function TokenPage() {
         setPair(d.pair);
         setRug(d.rug);
         setError(null);
+        // Only write snap if we don't already have one (first-seen is immutable)
         setSnap(prev => prev ?? {
-          priceUsd: Number(d.pair.priceUsd ?? 0),
+          priceUsd:  Number(d.pair.priceUsd ?? 0),
           marketCap: d.pair.marketCap ?? d.pair.fdv ?? 0,
           liquidity: d.pair.liquidity?.usd ?? 0,
         });
+        // Persist so future visits remember it
+        store.mergeSnapshots([d.pair]);
       } catch (e: any) { setError(e.message); }
     };
     load();
@@ -167,7 +174,7 @@ export default function TokenPage() {
                 <div>
                   <div className="text-2xs text-[var(--muted)]">Price USD</div>
                   <div className="text-xl font-bold text-[var(--txt)]">
-                    {curPrice < 0.01 ? `$${curPrice.toPrecision(4)}` : formatUsd(curPrice)}
+                    {formatTokenPrice(curPrice)}
                   </div>
                 </div>
                 <div className="text-right">
@@ -221,15 +228,15 @@ export default function TokenPage() {
                   <div className="text-2xs font-semibold text-[var(--muted)] uppercase tracking-wide mb-2">At fetch vs. now</div>
                   <div className="grid grid-cols-3 gap-x-4 gap-y-2.5">
                     {[
-                      { l: "Init Price",  init: snap.priceUsd,   cur: curPrice },
-                      { l: "Init MC",     init: snap.marketCap,  cur: curMc },
-                      { l: "Init Liq",    init: snap.liquidity,  cur: curLiq },
+                      { l: "Init Price",  init: snap.priceUsd,   cur: curPrice,  fmt: formatTokenPrice },
+                      { l: "Init MC",     init: snap.marketCap,  cur: curMc,     fmt: formatUsd },
+                      { l: "Init Liq",    init: snap.liquidity,  cur: curLiq,    fmt: formatUsd },
                     ].map(s => {
                       const delta = s.init > 0 ? ((s.cur - s.init) / s.init) * 100 : null;
                       return (
                         <div key={s.l}>
                           <div className="text-2xs text-[var(--muted)]">{s.l}</div>
-                          <div className="text-xs font-semibold text-[var(--txt)] mt-0.5">{formatUsd(s.init)}</div>
+                          <div className="text-xs font-semibold text-[var(--txt)] mt-0.5">{s.fmt(s.init)}</div>
                           {delta !== null && (
                             <div className={`text-2xs font-medium ${delta >= 0 ? "text-accent" : "text-danger"}`}>
                               {formatPct(delta)}

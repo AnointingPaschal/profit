@@ -29,14 +29,22 @@ export interface ScannedTokenEntry {
 
 const MAX_SCANNED_TOKENS = 5000;
 
+export interface PriceSnapshot {
+  priceUsd: number;
+  marketCap: number;
+  liquidity: number;
+  capturedAt: number;
+}
+
 const KEYS = {
-  config: "profit.config.v1",
-  positions: "profit.positions.v1",
-  watchlist: "profit.watchlist.v1",
-  blacklist: "profit.blacklist.v1",
-  killSwitch: "profit.killswitch.v1",
-  vault: "profit.localWalletVault.v1",
-  scannedTokens: "profit.scannedTokens.v1",
+  config:         "profit.config.v1",
+  positions:      "profit.positions.v1",
+  watchlist:      "profit.watchlist.v1",
+  blacklist:      "profit.blacklist.v1",
+  killSwitch:     "profit.killswitch.v1",
+  vault:          "profit.localWalletVault.v1",
+  scannedTokens:  "profit.scannedTokens.v1",
+  priceSnapshots: "profit.priceSnapshots.v1",
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -152,5 +160,35 @@ export const store = {
   clearScannedTokens() {
     if (typeof window === "undefined") return;
     window.localStorage.removeItem(KEYS.scannedTokens);
+  },
+
+  /** Load ALL stored first-seen price snapshots (persists across reloads). */
+  getSnapshots(): Record<string, PriceSnapshot> {
+    return read<Record<string, PriceSnapshot>>(KEYS.priceSnapshots, {});
+  },
+
+  /**
+   * Merge new pair data into the snapshot store.
+   * Only writes a snapshot for a mint if one doesn't already exist —
+   * this means "initial at first fetch" is truly immutable once set.
+   */
+  mergeSnapshots(pairs: DexPair[]) {
+    if (typeof window === "undefined" || pairs.length === 0) return;
+    const existing = read<Record<string, PriceSnapshot>>(KEYS.priceSnapshots, {});
+    let changed = false;
+    const now = Date.now();
+    for (const p of pairs) {
+      const mint = p.baseToken.address;
+      if (!existing[mint]) {
+        existing[mint] = {
+          priceUsd:   Number(p.priceUsd ?? 0),
+          marketCap:  p.marketCap ?? p.fdv ?? 0,
+          liquidity:  p.liquidity?.usd ?? 0,
+          capturedAt: now,
+        };
+        changed = true;
+      }
+    }
+    if (changed) write(KEYS.priceSnapshots, existing);
   },
 };

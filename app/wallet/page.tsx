@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useLocalWallet } from "@/components/LocalWalletProvider";
 import LocalWalletCard from "@/components/LocalWalletCard";
-import { formatUsd, shortAddr } from "@/lib/format";
+import { formatUsd, formatTokenPrice, shortAddr } from "@/lib/format";
 import { Holding } from "@/app/api/holdings/route";
 import {
   ArrowUp, ArrowDown, ArrowLeftRight, Clock,
@@ -217,7 +217,7 @@ function AssetRow({ logo, initial, name, priceUsd, change24h, balance, symbol, v
       <div className="flex-1 min-w-0">
         <div className="text-xs font-semibold text-[var(--txt)]">{symbol}</div>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-2xs text-[var(--muted)]">{formatUsd(priceUsd)}</span>
+          <span className="text-2xs text-[var(--muted)]">{formatTokenPrice(priceUsd)}</span>
           {change24h !== null && (
             <span className={`text-2xs font-medium px-1 py-0.5 rounded ${change24h >= 0 ? "bg-accent/10 text-accent" : "bg-danger/10 text-danger"}`}>
               {change24h >= 0 ? "+" : ""}{change24h.toFixed(2)}%

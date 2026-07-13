@@ -2,18 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ---- Light theme (default) ---- */
+/* ──────────────────────────────────────────
+   Light theme (default) — pure white body
+   ────────────────────────────────────────── */
 :root {
-  --bg:     #F4F6FA;
+  --bg:     #FFFFFF;
   --card:   #FFFFFF;
-  --card2:  #F0F2F7;
-  --border: #E4E7EF;
+  --card2:  #F4F6FA;
+  --border: #E8ECF2;
   --txt:    #0F1729;
   --sub:    #374256;
-  --muted:  #7B869B;
+  --muted:  #8492A6;
 }
 
-/* ---- Dark theme ---- */
+/* ──────────────────────────────────────────
+   Dark theme
+   ────────────────────────────────────────── */
 .dark {
   --bg:     #0B0E14;
   --card:   #141920;
@@ -30,8 +34,16 @@ html, body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ── Banner overlay: white in light, dark in dark ── */
+.banner-overlay {
+  background: rgba(255, 255, 255, 0.88);
+}
+.dark .banner-overlay {
+  background: rgba(20, 25, 32, 0.88);
 }
 
 ::-webkit-scrollbar { display: none; }
@@ -42,19 +54,14 @@ html, body {
 
 .pill { @apply text-2xs px-1.5 py-0.5 rounded-full font-medium; }
 
-/* Action buttons (Send / Receive / Swap / History) */
-.action-btn {
-  @apply flex flex-col items-center gap-1.5;
-}
+/* Action buttons */
+.action-btn { @apply flex flex-col items-center gap-1.5; }
 .action-btn .icon {
   @apply w-11 h-11 rounded-xl2 flex items-center justify-center;
   background: var(--txt);
   color: var(--bg);
 }
-.dark .action-btn .icon {
-  background: var(--card2);
-  color: var(--txt);
-}
+.dark .action-btn .icon { background: var(--card2); color: var(--txt); }
 .action-btn span { @apply text-2xs; color: var(--sub); }
 
 /* Generic surface */
@@ -65,7 +72,7 @@ html, body {
   padding: 0.875rem;
 }
 
-/* Consistent primary button — #10B981 accent everywhere */
+/* Consistent primary button */
 .btn-primary {
   @apply rounded-xl2 py-2.5 text-xs font-semibold text-white;
   background: #10B981;
