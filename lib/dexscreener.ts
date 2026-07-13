@@ -41,54 +41,58 @@ export async function fetchPairsForTokens(addresses: string[]): Promise<DexPair[
   return all;
 }
 
-/** Fetch from all discovery sources in parallel and deduplicate by pairAddress */
+/** Fetch from all discovery sources in parallel, deduplicate by mint address (not pool) */
 export async function fetchAllSolanaPairs(): Promise<DexPair[]> {
-  const seen = new Set<string>();
-  const merged: DexPair[] = [];
-
-  const add = (pairs: DexPair[] | null) => {
-    if (!pairs) return;
-    for (const p of pairs) {
-      if (p.chainId !== "solana" || seen.has(p.pairAddress)) continue;
-      seen.add(p.pairAddress);
-      merged.push(p);
-    }
-  };
-
-  // 1. Boosted (top + latest) → ~60 pairs
+  // 1. Boosted addresses (top + latest)
   const [boostedTop, boostedLatest] = await Promise.all([
     safeFetch<any[]>(`${BASE}/token-boosts/top/v1`, 30),
     safeFetch<any[]>(`${BASE}/token-boosts/latest/v1`, 15),
   ]);
+  const boostedAddresses = [
+    ...(boostedTop ?? []),
+    ...(boostedLatest ?? []),
+  ]
+    .filter((t: any) => t?.chainId === "solana" && t.tokenAddress)
+    .map((t: any) => t.tokenAddress as string);
 
-  const boostedAddresses: string[] = [];
-  for (const item of [...(boostedTop ?? []), ...(boostedLatest ?? [])]) {
-    if (item?.chainId === "solana" && item.tokenAddress) {
-      boostedAddresses.push(item.tokenAddress);
-    }
-  }
-  add(await fetchPairsForTokens([...new Set(boostedAddresses)]));
-
-  // 2. Latest token profiles → up to 30 more
+  // 2. Profile addresses
   const profiles = await safeFetch<any[]>(`${BASE}/token-profiles/latest/v1`, 30);
   const profileAddresses = (profiles ?? [])
-    .filter((p: any) => p?.chainId === "solana")
-    .map((p: any) => p.tokenAddress as string)
-    .filter(Boolean);
-  add(await fetchPairsForTokens([...new Set(profileAddresses)]));
+    .filter((p: any) => p?.chainId === "solana" && p.tokenAddress)
+    .map((p: any) => p.tokenAddress as string);
 
-  // 3. Parallel search queries — each returns ~30 pairs
+  // 3. Parallel search queries
   const searchResults = await Promise.allSettled(
     SEARCH_QUERIES.map(q =>
-      safeFetch<{ pairs?: DexPair[] }>(`${BASE}/latest/dex/search?q=${encodeURIComponent(q)}`, 20)
-        .then(d => d?.pairs ?? [])
+      safeFetch<{ pairs?: DexPair[] }>(
+        `${BASE}/latest/dex/search?q=${encodeURIComponent(q)}`, 20
+      ).then(d => (d?.pairs ?? []).filter((p: DexPair) => p.chainId === "solana"))
     )
   );
+  const searchPairs: DexPair[] = [];
   for (const r of searchResults) {
-    if (r.status === "fulfilled") add(r.value);
+    if (r.status === "fulfilled") searchPairs.push(...r.value);
   }
 
-  return merged;
+  // 4. Fetch full pair data for boosted + profile addresses
+  const addressPairs = await fetchPairsForTokens([
+    ...new Set([...boostedAddresses, ...profileAddresses]),
+  ]);
+
+  // 5. Deduplicate by mint address — keep the highest-liquidity pool per token.
+  //    This is why PUMP was appearing dozens of times: it has many liquidity pools
+  //    and DexScreener returns each pool as a separate row.
+  const byMint = new Map<string, DexPair>();
+  for (const p of [...addressPairs, ...searchPairs]) {
+    if (p.chainId !== "solana") continue;
+    const mint = p.baseToken.address;
+    const prev = byMint.get(mint);
+    if (!prev || (p.liquidity?.usd ?? 0) > (prev.liquidity?.usd ?? 0)) {
+      byMint.set(mint, p);
+    }
+  }
+
+  return Array.from(byMint.values());
 }
 
 export async function fetchPairByMint(mint: string): Promise<DexPair | null> {
