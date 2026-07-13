@@ -6,7 +6,7 @@ import Image from "next/image";
 import { DexPair, StrategyConfig } from "@/lib/types";
 import { formatUsd, formatPct, formatAge } from "@/lib/format";
 import { store } from "@/lib/store";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, History } from "lucide-react";
 import clsx from "clsx";
 
 type SortMode = "trending" | "new" | "top";
@@ -39,6 +39,7 @@ export default function DiscoverPage() {
       const blacklist = store.getBlacklist();
       const filtered: DexPair[] = data.pairs.filter((p: DexPair) => !blacklist.includes(p.baseToken.address));
       setPairs(filtered);
+      store.recordScannedTokens(data.pairs);
       setError(null);
     } catch (e: any) {
       setError(e.message);
@@ -81,6 +82,9 @@ export default function DiscoverPage() {
           <button onClick={load} className="ml-auto text-muted p-1.5">
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
           </button>
+          <Link href="/discover/history" className="text-muted p-1.5">
+            <History size={16} />
+          </Link>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-surface2 rounded-xl px-3 py-2 text-center">

@@ -1,6 +1,7 @@
 import fetch from "node-fetch";
 import { config } from "./config";
 import { DexPair } from "./types";
+import { recordScannedTokens } from "./scannedTokensLog";
 
 /**
  * Discovery layer: finds candidate Solana tokens using DexScreener's public API.
@@ -81,6 +82,8 @@ export async function findCandidates(): Promise<DexPair[]> {
     seen.add(p.pairAddress);
     merged.push(p);
   }
+
+  recordScannedTokens(merged);
 
   return merged.filter((p) => passesFilters(p).ok);
 }
