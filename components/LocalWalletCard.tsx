@@ -197,7 +197,7 @@ export default function LocalWalletCard() {
         <button
           disabled={!confirmedWritten}
           onClick={confirmCreateWritten}
-          className="w-full bg-accent text-black font-semibold rounded-xl2 py-3 disabled:opacity-40"
+          className="btn-primary w-full disabled:opacity-40"
         >
           Continue
         </button>
@@ -228,7 +228,7 @@ export default function LocalWalletCard() {
           className="w-full bg-surface2 rounded-xl px-3 py-2 text-sm outline-none resize-none"
         />
         {importError && <div className="text-danger text-xs">{importError}</div>}
-        <button onClick={submitImport} className="w-full bg-accent text-black font-semibold rounded-xl2 py-3">
+        <button onClick={submitImport} className="btn-primary w-full">
           Continue
         </button>
       </div>
@@ -258,7 +258,7 @@ export default function LocalWalletCard() {
           className="w-full bg-surface2 rounded-xl px-3 py-2 text-sm outline-none"
         />
         {importError && <div className="text-danger text-xs">{importError}</div>}
-        <button onClick={finishSetup} className="w-full bg-accent text-black font-semibold rounded-xl2 py-3">
+        <button onClick={finishSetup} className="btn-primary w-full">
           Encrypt & Save Wallet
         </button>
       </div>

@@ -2,14 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchBoostedSolanaTokens, fetchPairsForTokens, searchSolanaPairs } from "@/lib/dexscreener";
 import { DexPair } from "@/lib/types";
 
+// We no longer filter here — we return ALL pairs and let the client sort/tab.
+// The only dedup is by pairAddress so the same pool doesn't appear twice.
 export async function GET(req: NextRequest) {
-  const params = req.nextUrl.searchParams;
-  const minLiquidityUsd = Number(params.get("minLiquidityUsd") ?? 3000);
-  const maxMarketCapUsd = Number(params.get("maxMarketCapUsd") ?? 200000);
-  const minTokenAgeMinutes = Number(params.get("minTokenAgeMinutes") ?? 1);
-  const maxTokenAgeMinutes = Number(params.get("maxTokenAgeMinutes") ?? 180);
-  const min5mVolumeUsd = Number(params.get("min5mVolumeUsd") ?? 500);
-  const sort = params.get("sort") ?? "trending"; // trending | new | top
+  const sort = req.nextUrl.searchParams.get("sort") ?? "trending";
 
   try {
     const boosted = await fetchBoostedSolanaTokens();
@@ -26,29 +22,18 @@ export async function GET(req: NextRequest) {
       merged.push(p);
     }
 
-    const filtered = merged.filter((p) => {
-      const liquidity = p.liquidity?.usd ?? 0;
-      const mcap = p.marketCap ?? p.fdv ?? Infinity;
-      const ageMinutes = p.pairCreatedAt ? (Date.now() - p.pairCreatedAt) / 60000 : Infinity;
-      const vol5m = p.volume?.m5 ?? 0;
-      return (
-        liquidity >= minLiquidityUsd &&
-        mcap <= maxMarketCapUsd &&
-        ageMinutes >= minTokenAgeMinutes &&
-        ageMinutes <= maxTokenAgeMinutes &&
-        vol5m >= min5mVolumeUsd
-      );
-    });
-
     if (sort === "new") {
-      filtered.sort((a, b) => (b.pairCreatedAt ?? 0) - (a.pairCreatedAt ?? 0));
+      merged.sort((a, b) => (b.pairCreatedAt ?? 0) - (a.pairCreatedAt ?? 0));
     } else if (sort === "top") {
-      filtered.sort((a, b) => (b.marketCap ?? b.fdv ?? 0) - (a.marketCap ?? a.fdv ?? 0));
+      merged.sort((a, b) => (b.marketCap ?? b.fdv ?? 0) - (a.marketCap ?? a.fdv ?? 0));
+    } else if (sort === "lowmc") {
+      merged.sort((a, b) => (a.marketCap ?? a.fdv ?? Infinity) - (b.marketCap ?? b.fdv ?? Infinity));
     } else {
-      filtered.sort((a, b) => (b.volume?.h24 ?? 0) - (a.volume?.h24 ?? 0));
+      // trending: highest 24h volume first
+      merged.sort((a, b) => (b.volume?.h24 ?? 0) - (a.volume?.h24 ?? 0));
     }
 
-    return NextResponse.json({ pairs: filtered });
+    return NextResponse.json({ pairs: merged });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "discover failed", pairs: [] }, { status: 500 });
   }

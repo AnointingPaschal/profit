@@ -9,7 +9,7 @@ import LocalWalletCard from "@/components/LocalWalletCard";
 import { formatUsd, shortAddr } from "@/lib/format";
 import { Holding } from "@/app/api/holdings/route";
 import {
-  ArrowUp, ArrowDown, ArrowLeftRight, Clock, Lock,
+  ArrowUp, ArrowDown, ArrowLeftRight, Clock,
   Eye, EyeOff, Plus,
 } from "lucide-react";
 
@@ -122,8 +122,7 @@ export default function WalletPage() {
             { href: "/wallet/send",    icon: ArrowUp,          label: "Send" },
             { href: "/wallet/receive", icon: ArrowDown,        label: "Receive" },
             { href: "/trade",          icon: ArrowLeftRight,   label: "Swap" },
-            { href: "/discover/history", icon: Clock,          label: "History" },
-            { href: "/config",         icon: Lock,             label: "Discipline" },
+            { href: "/wallet/history", icon: Clock,            label: "History" },
           ].map(({ href, icon: Icon, label }) => (
             <Link key={label} href={href} className="action-btn">
               <div className="icon dark:bg-[var(--card2)]">

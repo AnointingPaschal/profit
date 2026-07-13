@@ -113,7 +113,7 @@ function TradeInner() {
             {!connected
               ? <WalletMultiButton style={{ width: "100%", justifyContent: "center", borderRadius: "0.875rem", height: 40, fontSize: 13 }} />
               : <button onClick={execSwap} disabled={!quote}
-                  className="w-full bg-accent text-white text-xs font-semibold rounded-xl2 py-2.5 disabled:opacity-40">
+                  className="btn-primary w-full disabled:opacity-40">
                   Confirm Swap
                 </button>
             }
@@ -124,7 +124,7 @@ function TradeInner() {
           <>
             <div className="text-2xs text-[var(--muted)]">Target price (USD)</div>
             <Input value={limitPrice} onChange={setLimitPrice} placeholder="0.000001" type="number" />
-            <button onClick={addOrder} className="w-full bg-accent text-white text-xs font-semibold rounded-xl2 py-2.5">
+            <button onClick={addOrder} className="btn-primary w-full">
               Place Limit Order
             </button>
             <p className="text-2xs text-[var(--muted)]">

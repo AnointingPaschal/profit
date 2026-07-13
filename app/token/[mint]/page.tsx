@@ -330,7 +330,7 @@ export default function TokenPage() {
             {/* Trade button */}
             <button
               onClick={() => router.push(`/trade?mint=${mint}`)}
-              className="w-full bg-accent text-white text-sm font-semibold rounded-xl2 py-2.5 mt-1">
+              className="btn-primary w-full mt-1">
               Trade {pair.baseToken.symbol}
             </button>
           </div>

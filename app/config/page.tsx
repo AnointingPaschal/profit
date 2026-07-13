@@ -101,7 +101,7 @@ export default function ConfigPage() {
         </div>
       </div>
 
-      <button onClick={save} className="w-full bg-accent text-white text-xs font-semibold rounded-xl2 py-2.5">
+      <button onClick={save} className="btn-primary w-full">
         {saved ? "Saved ✓" : "Save Config"}
       </button>
     </div>

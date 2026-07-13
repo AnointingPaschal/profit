@@ -203,7 +203,7 @@ function SendPageInner() {
           <button
             onClick={send}
             disabled={sending || !recipient || !amount}
-            className="w-full bg-accent text-white font-semibold rounded-xl2 py-3 disabled:opacity-40"
+            className="btn-primary w-full disabled:opacity-40"
           >
             {sending ? "Sending…" : "Send"}
           </button>
