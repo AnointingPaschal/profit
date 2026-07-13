@@ -2,15 +2,20 @@ import { DexPair } from "./types";
 
 const BASE = "https://api.dexscreener.com";
 
-// Multiple search terms to pull different segments of the Solana token universe.
-// Each query returns up to ~30 pairs. With 30 queries + 3 profile endpoints we
-// can surface 500–1000+ unique pairs per refresh.
+// Terms covering the full market-cap spectrum:
+// – Established / high-MC Solana tokens
+// – Mid-range DeFi / meme tokens
+// – Low-MC newcomers
 const SEARCH_QUERIES = [
-  "pump", "meme", "dog", "cat", "pepe", "moon", "sol",
-  "inu", "baby", "ai", "based", "chad", "gme", "super",
-  "degen", "ape", "fish", "frog", "bird", "bear", "bull",
-  "king", "god", "legend", "gem", "coin", "token", "swap",
-  "dex", "dao",
+  // Established / high-MC
+  "sol", "bonk", "wif", "jup", "ray", "jto", "pyth", "bome",
+  "mew", "popcat", "drift", "wen", "silly", "mobile",
+  // Mid-range
+  "pump", "meme", "doge", "pepe", "moon", "inu", "based",
+  "cat", "dog", "ai", "agent", "gme", "degen", "ape",
+  // Low-MC / new launches
+  "baby", "mini", "super", "fish", "frog", "bird", "bear",
+  "bull", "king", "god", "gem", "chad", "wojak", "dao",
 ];
 
 async function safeFetch<T>(url: string, revalidate = 15): Promise<T | null> {
