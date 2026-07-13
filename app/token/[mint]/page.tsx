@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { DexPair, RugReport } from "@/lib/types";
 import { formatUsd, formatTokenPrice, formatPct, formatAge, shortAddr } from "@/lib/format";
 import { store } from "@/lib/store";
-import { ArrowLeft, Star, Copy, Globe, ExternalLink, ShieldCheck, ShieldAlert, Ban } from "lucide-react";
+import {
+  ArrowLeft, Star, Copy, Globe, ExternalLink,
+  ShieldCheck, ShieldAlert, Ban,
+  BrainCircuit, TrendingUp, TrendingDown, AlertCircle,
+} from "lucide-react";
 import clsx from "clsx";
+import { AnalysisResult } from "@/app/api/ai-analyze/route";
 
 type TF = "m5" | "h1" | "h6" | "h24";
 const TFS: { k: TF; l: string }[] = [{ k: "m5", l: "5M" }, { k: "h1", l: "1H" }, { k: "h6", l: "6H" }, { k: "h24", l: "24H" }];
@@ -27,6 +32,12 @@ export default function TokenPage() {
   const [watchlisted, setWatchlisted] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // AI analysis — auto-runs once when pair + rug data first arrive
+  const [aiResult,  setAiResult]  = useState<AnalysisResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError,   setAiError]   = useState<string | null>(null);
+  const analysedRef = useRef(false); // prevent re-firing on every 8s refresh
 
   // Snapshot of price/MC/liquidity at first load — persists via store
   const [snap, setSnap] = useState<{ priceUsd: number; marketCap: number; liquidity: number; capturedAt?: number } | null>(null);
@@ -65,6 +76,54 @@ export default function TokenPage() {
       if (!d.error) { setHolders(d.holders); setTop10Pct(d.top10Pct); }
     });
   }, [mint]);
+
+  // Auto-analyse once both pair and rug data are loaded
+  useEffect(() => {
+    if (!pair || !rug || analysedRef.current) return;
+    analysedRef.current = true;
+
+    const runAnalysis = async () => {
+      setAiLoading(true);
+      setAiError(null);
+      try {
+        const ageMinutes = pair.pairCreatedAt
+          ? (Date.now() - pair.pairCreatedAt) / 60000
+          : undefined;
+        const res = await fetch("/api/ai-analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "openai/gpt-4o",   // user-visible as "GPT-4o" (maps to gpt-oss-120b on OR)
+            token: {
+              symbol:           pair.baseToken.symbol,
+              name:             pair.baseToken.name,
+              price:            Number(pair.priceUsd ?? 0),
+              marketCap:        pair.marketCap ?? pair.fdv ?? 0,
+              liquidity:        pair.liquidity?.usd ?? 0,
+              change5m:         pair.priceChange?.m5,
+              change1h:         pair.priceChange?.h1,
+              change24h:        pair.priceChange?.h24,
+              volume24h:        pair.volume?.h24,
+              ageMinutes,
+              mintRenounced:    rug.mintAuthorityRenounced,
+              freezeRenounced:  rug.freezeAuthorityRenounced,
+              lpLockedPct:      rug.lpLockedPct,
+              top10HolderPct:   rug.top10HolderPct,
+            },
+          }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        setAiResult(data);
+      } catch (e: any) {
+        setAiError(e.message);
+      } finally {
+        setAiLoading(false);
+      }
+    };
+
+    runAnalysis();
+  }, [pair, rug, mint]);
 
   const copy = () => { navigator.clipboard.writeText(mint); setCopied(true); setTimeout(() => setCopied(false), 1200); };
 
@@ -265,7 +324,117 @@ export default function TokenPage() {
 
             <hr style={{ borderColor: "var(--border)" }} />
 
-            {/* Rug check */}
+            {/* ── AI Analysis ── auto-runs with gpt-oss-120b on load */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <BrainCircuit size={13} className="text-accent" />
+                  <span className="text-xs font-semibold text-[var(--txt)]">AI Analysis</span>
+                  <span className="text-2xs text-[var(--muted)]">GPT-4o</span>
+                </div>
+                {aiLoading && (
+                  <span className="text-2xs text-[var(--muted)] animate-pulse">Analysing…</span>
+                )}
+                {aiResult && !aiLoading && (
+                  <span className={clsx("pill font-semibold",
+                    aiResult.decision === "BUY"  ? "bg-accent/10 text-accent" :
+                    aiResult.decision === "SELL" ? "bg-danger/10 text-danger" :
+                                                   "bg-warn/10 text-warn")}>
+                    {aiResult.decision}
+                  </span>
+                )}
+              </div>
+
+              {aiError && (
+                <div className="flex items-center gap-1.5 text-2xs text-danger">
+                  <AlertCircle size={11} /> {aiError}
+                </div>
+              )}
+
+              {aiLoading && !aiResult && (
+                <div className="space-y-1.5 animate-pulse">
+                  <div className="h-2.5 bg-[var(--card2)] rounded w-full" />
+                  <div className="h-2.5 bg-[var(--card2)] rounded w-4/5" />
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {[0,1,2].map(i => <div key={i} className="h-10 bg-[var(--card2)] rounded-xl" />)}
+                  </div>
+                </div>
+              )}
+
+              {aiResult && (
+                <div className="space-y-2">
+                  {/* Confidence + Risk row */}
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <div className="text-2xs text-[var(--muted)]">Confidence</div>
+                      <div className="text-xs font-bold text-[var(--txt)]">{aiResult.confidence}%</div>
+                    </div>
+                    <div>
+                      <div className="text-2xs text-[var(--muted)]">Risk</div>
+                      <div className={clsx("text-xs font-bold",
+                        aiResult.riskLevel === "EXTREME" ? "text-danger" :
+                        aiResult.riskLevel === "HIGH"    ? "text-warn"   : "text-accent")}>
+                        {aiResult.riskLevel}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-2xs text-[var(--sub)] leading-relaxed">{aiResult.reasoning}</p>
+
+                  {/* Entry / Target / Stop-Loss */}
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { l: "Entry",  v: formatTokenPrice(aiResult.entryPrice),  c: "" },
+                      { l: "Target", v: formatTokenPrice(aiResult.targetPrice), c: "text-accent" },
+                      { l: "SL",     v: formatTokenPrice(aiResult.stopLoss),    c: "text-danger" },
+                    ].map(r => (
+                      <div key={r.l} className="rounded-xl p-2 text-center"
+                        style={{ background: "var(--card2)" }}>
+                        <div className="text-2xs text-[var(--muted)]">{r.l}</div>
+                        <div className={clsx("text-2xs font-bold mt-0.5", r.c || "text-[var(--txt)]")}>
+                          {r.v}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Signals */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      {aiResult.signals.bullish.slice(0, 3).map((s, i) => (
+                        <div key={i} className="flex items-start gap-1 text-2xs text-accent">
+                          <TrendingUp size={10} className="shrink-0 mt-0.5" />{s}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-1">
+                      {aiResult.signals.bearish.slice(0, 3).map((s, i) => (
+                        <div key={i} className="flex items-start gap-1 text-2xs text-danger">
+                          <TrendingDown size={10} className="shrink-0 mt-0.5" />{s}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Trade button that pre-fills the trade page */}
+                  <button
+                    onClick={() => router.push(`/trade?mint=${mint}`)}
+                    className={clsx(
+                      "w-full py-2 rounded-xl text-xs font-bold text-white",
+                      aiResult.decision === "BUY"  ? "bg-accent" :
+                      aiResult.decision === "SELL" ? "bg-danger" : "bg-[var(--muted)]"
+                    )}>
+                    {aiResult.decision === "HOLD"
+                      ? "View Trade"
+                      : `${aiResult.decision} ${pair.baseToken.symbol}`}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <hr style={{ borderColor: "var(--border)" }} />
+
+            {/* ── Rug check ── */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-[var(--txt)]">Rug Check</span>

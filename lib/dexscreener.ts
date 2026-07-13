@@ -3,19 +3,40 @@ import { DexPair } from "./types";
 const BASE = "https://api.dexscreener.com";
 
 // Terms covering the full market-cap spectrum:
-// – Established / high-MC Solana tokens
-// – Mid-range DeFi / meme tokens
-// – Low-MC newcomers
 const SEARCH_QUERIES = [
-  // Established / high-MC
+  // Established / high-MC Solana tokens
   "sol", "bonk", "wif", "jup", "ray", "jto", "pyth", "bome",
   "mew", "popcat", "drift", "wen", "silly", "mobile",
+  "moodeng", "goat", "pnut", "chillguy", "fartcoin", "trump",
+  "melania", "ai16z", "tnsr", "render", "io", "hnt", "orca",
   // Mid-range
   "pump", "meme", "doge", "pepe", "moon", "inu", "based",
   "cat", "dog", "ai", "agent", "gme", "degen", "ape",
   // Low-MC / new launches
   "baby", "mini", "super", "fish", "frog", "bird", "bear",
   "bull", "king", "god", "gem", "chad", "wojak", "dao",
+];
+
+// Top Solana tokens by market cap — fetched directly by mint address
+// so they always appear regardless of search-query coverage.
+const HIGH_MC_MINTS = [
+  "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", // BONK
+  "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm", // WIF
+  "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",  // JUP
+  "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", // RAY
+  "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3", // PYTH
+  "jtojtomepa8berqQfDqwct2SziQaQVDkMBhSibbdVH",   // JTO
+  "ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82",  // BOME
+  "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr", // POPCAT
+  "MEW1gQWJ3nEXg2qgERiKu7FAFj79PHvQVREQUzScPP5",  // MEW
+  "TNSRxcUxoT9xBG3de7A4BrxBMy9b86YZDXRYAGQfB2P",  // TNSR
+  "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",  // GOAT
+  "HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC", // AI16Z
+  "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof",  // RENDER (SOL bridged)
+  "CLoUDKc4Ane7HeQcPpE3YHnznRxhMimJ4MyaUqyHFzAu",  // CLOUD
+  "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ",  // W (wormhole)
+  "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",   // ORCA
+  "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1",   // bSOL
 ];
 
 async function safeFetch<T>(url: string, revalidate = 15): Promise<T | null> {
@@ -48,6 +69,9 @@ export async function fetchPairsForTokens(addresses: string[]): Promise<DexPair[
 
 /** Fetch from all discovery sources in parallel, deduplicate by mint address (not pool) */
 export async function fetchAllSolanaPairs(): Promise<DexPair[]> {
+  // 0. Known high-MC mints — fetched directly so they're always present
+  const highMcPairs = await fetchPairsForTokens(HIGH_MC_MINTS);
+
   // 1. Boosted addresses (top + latest)
   const [boostedTop, boostedLatest] = await Promise.all([
     safeFetch<any[]>(`${BASE}/token-boosts/top/v1`, 30),
@@ -85,10 +109,9 @@ export async function fetchAllSolanaPairs(): Promise<DexPair[]> {
   ]);
 
   // 5. Deduplicate by mint address — keep the highest-liquidity pool per token.
-  //    This is why PUMP was appearing dozens of times: it has many liquidity pools
-  //    and DexScreener returns each pool as a separate row.
+  //    highMcPairs come first so they're always present even if searches miss them.
   const byMint = new Map<string, DexPair>();
-  for (const p of [...addressPairs, ...searchPairs]) {
+  for (const p of [...highMcPairs, ...addressPairs, ...searchPairs]) {
     if (p.chainId !== "solana") continue;
     const mint = p.baseToken.address;
     const prev = byMint.get(mint);

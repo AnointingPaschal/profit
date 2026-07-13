@@ -97,21 +97,29 @@ export default function DiscoverPage() {
     return () => clearInterval(iv);
   }, [tab, load]);
 
-  // ── Filter chain ──
+  // ── Filter + sort chain ──
   const mcMax   = MC_FILTERS.find(f => f.key === mcFilter)?.max ?? Infinity;
   const q       = query.trim().toLowerCase();
 
-  const filtered = allPairs.filter(p => {
-    const mc = p.marketCap ?? p.fdv ?? Infinity;
-    if (mc > mcMax) return false;
-    if (q) {
-      const sym  = p.baseToken.symbol.toLowerCase();
-      const name = p.baseToken.name.toLowerCase();
-      if (!sym.includes(q) && !name.includes(q)) return false;
-    }
-    if (tab === "lowmc" && mc > 200_000) return false;
-    return true;
-  });
+  const filtered = allPairs
+    .filter(p => {
+      const mc = p.marketCap ?? p.fdv ?? Infinity;
+      if (mc > mcMax) return false;
+      if (q) {
+        const sym  = p.baseToken.symbol.toLowerCase();
+        const name = p.baseToken.name.toLowerCase();
+        if (!sym.includes(q) && !name.includes(q)) return false;
+      }
+      if (tab === "lowmc" && mc > 200_000) return false;
+      return true;
+    })
+    // Tokens with a logo always surface first — otherwise unknown tokens
+    // dominate the top of the list.
+    .sort((a, b) => {
+      const aHas = a.info?.imageUrl ? 1 : 0;
+      const bHas = b.info?.imageUrl ? 1 : 0;
+      return bHas - aHas; // stable: preserves existing sort within each group
+    });
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < filtered.length;
