@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
   const minTokenAgeMinutes = Number(params.get("minTokenAgeMinutes") ?? 1);
   const maxTokenAgeMinutes = Number(params.get("maxTokenAgeMinutes") ?? 180);
   const min5mVolumeUsd = Number(params.get("min5mVolumeUsd") ?? 500);
+  const sort = params.get("sort") ?? "trending"; // trending | new | top
 
   try {
     const boosted = await fetchBoostedSolanaTokens();
@@ -38,6 +39,14 @@ export async function GET(req: NextRequest) {
         vol5m >= min5mVolumeUsd
       );
     });
+
+    if (sort === "new") {
+      filtered.sort((a, b) => (b.pairCreatedAt ?? 0) - (a.pairCreatedAt ?? 0));
+    } else if (sort === "top") {
+      filtered.sort((a, b) => (b.marketCap ?? b.fdv ?? 0) - (a.marketCap ?? a.fdv ?? 0));
+    } else {
+      filtered.sort((a, b) => (b.volume?.h24 ?? 0) - (a.volume?.h24 ?? 0));
+    }
 
     return NextResponse.json({ pairs: filtered });
   } catch (err: any) {

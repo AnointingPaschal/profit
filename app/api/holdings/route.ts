@@ -74,8 +74,22 @@ export async function GET(req: NextRequest) {
 
     holdings.sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
 
+    let solPriceUsd: number | null = null;
+    try {
+      const priceRes = await fetch(
+        "https://lite-api.jup.ag/price/v2?ids=So11111111111111111111111111111111111111112"
+      );
+      if (priceRes.ok) {
+        const priceData = await priceRes.json();
+        solPriceUsd = Number(priceData?.data?.So11111111111111111111111111111111111111112?.price ?? 0) || null;
+      }
+    } catch {
+      // price lookup is best-effort; portfolio total just falls back to token value only
+    }
+
     return NextResponse.json({
       solBalance: solLamports / 1e9,
+      solPriceUsd,
       holdings,
     });
   } catch (err: any) {

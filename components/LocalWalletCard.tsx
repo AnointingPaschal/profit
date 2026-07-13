@@ -12,8 +12,8 @@ import {
 } from "@/lib/localWallet";
 import { store, LocalWalletVault } from "@/lib/store";
 import { shortAddr } from "@/lib/format";
-import HoldingsList from "./HoldingsList";
-import { Copy, Eye, EyeOff, Lock, Trash2, ShieldAlert } from "lucide-react";
+import { useLocalWallet } from "./LocalWalletProvider";
+import { Copy, Eye, EyeOff, Trash2, ShieldAlert } from "lucide-react";
 
 type Step =
   | "none"
@@ -25,7 +25,7 @@ type Step =
   | "ready";
 
 export default function LocalWalletCard() {
-  const [vault, setVaultState] = useState<LocalWalletVault | null>(null);
+  const { vault, refreshVault } = useLocalWallet();
   const [step, setStep] = useState<Step>("none");
 
   // create flow state
@@ -49,10 +49,8 @@ export default function LocalWalletCard() {
   const [copyLabel, setCopyLabel] = useState("Copy");
 
   useEffect(() => {
-    const v = store.getVault();
-    setVaultState(v);
-    setStep(v ? "ready" : "none");
-  }, []);
+    setStep(vault ? "ready" : "none");
+  }, [vault]);
 
   const startCreate = () => {
     const mnemonic = generateMnemonic(12);
@@ -103,7 +101,7 @@ export default function LocalWalletCard() {
       createdAt: Date.now(),
     };
     store.setVault(newVault);
-    setVaultState(newVault);
+    refreshVault();
     setStep("ready");
     setPassword("");
     setPasswordConfirm("");
@@ -140,7 +138,7 @@ export default function LocalWalletCard() {
   const deleteWallet = () => {
     if (!confirm("Delete this wallet from this browser? Make sure you've saved your seed phrase or private key — this cannot be undone.")) return;
     store.deleteVault();
-    setVaultState(null);
+    refreshVault();
     setStep("none");
     hideReveal();
   };
@@ -267,19 +265,18 @@ export default function LocalWalletCard() {
     );
   }
 
-  // step === "ready"
+  // step === "ready" — used here only for the security/backup panel; holdings and
+  // send/receive/swap actions are rendered by the Wallet page itself.
   if (!vault) return null;
   return (
     <div className="card space-y-3">
       <div className="flex items-center justify-between">
-        <span className="font-medium">My Wallet</span>
+        <span className="font-medium">Backup & Security</span>
         <button onClick={deleteWallet} className="text-danger">
           <Trash2 size={16} />
         </button>
       </div>
       <div className="text-xs text-muted">{shortAddr(vault.publicKey, 6)}</div>
-
-      <HoldingsList address={vault.publicKey} />
 
       <div className="border-t border-border pt-3 space-y-2">
         {!revealedSecret ? (

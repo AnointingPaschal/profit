@@ -2,16 +2,25 @@ export interface DexPair {
   chainId: string;
   dexId: string;
   pairAddress: string;
+  url?: string;
   baseToken: { address: string; name: string; symbol: string };
   quoteToken: { address: string; name: string; symbol: string };
   priceUsd?: string;
-  liquidity?: { usd?: number };
+  priceNative?: string;
+  liquidity?: { usd?: number; base?: number; quote?: number };
   fdv?: number;
   marketCap?: number;
   pairCreatedAt?: number;
-  volume?: { m5?: number; h1?: number; h24?: number };
+  volume?: { m5?: number; h1?: number; h6?: number; h24?: number };
+  priceChange?: { m5?: number; h1?: number; h6?: number; h24?: number };
   txns?: Record<string, { buys: number; sells: number }>;
-  info?: { imageUrl?: string; socials?: { platform: string; handle: string }[] };
+  info?: {
+    imageUrl?: string;
+    header?: string;
+    openGraph?: string;
+    websites?: { url: string }[];
+    socials?: { platform: string; handle: string }[];
+  };
 }
 
 export interface RugReport {

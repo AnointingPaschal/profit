@@ -2,16 +2,20 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { DexPair, StrategyConfig } from "@/lib/types";
 import { formatUsd, formatPct, formatAge } from "@/lib/format";
 import { store } from "@/lib/store";
-import { RefreshCw, TrendingUp } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import clsx from "clsx";
+
+type SortMode = "trending" | "new" | "top";
 
 export default function DiscoverPage() {
+  const [sort, setSort] = useState<SortMode>("trending");
   const [pairs, setPairs] = useState<DexPair[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [initialMc, setInitialMc] = useState<Record<string, number>>({});
   const [cfg, setCfg] = useState<StrategyConfig | null>(null);
 
   useEffect(() => {
@@ -22,6 +26,7 @@ export default function DiscoverPage() {
     if (!cfg) return;
     try {
       const q = new URLSearchParams({
+        sort,
         minLiquidityUsd: String(cfg.discovery.minLiquidityUsd),
         maxMarketCapUsd: String(cfg.discovery.maxMarketCapUsd),
         minTokenAgeMinutes: String(cfg.discovery.minTokenAgeMinutes),
@@ -34,68 +39,115 @@ export default function DiscoverPage() {
       const blacklist = store.getBlacklist();
       const filtered: DexPair[] = data.pairs.filter((p: DexPair) => !blacklist.includes(p.baseToken.address));
       setPairs(filtered);
-      setInitialMc((prev) => {
-        const next = { ...prev };
-        for (const p of filtered) {
-          if (!(p.baseToken.address in next)) next[p.baseToken.address] = p.marketCap ?? p.fdv ?? 0;
-        }
-        return next;
-      });
       setError(null);
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [cfg]);
+  }, [cfg, sort]);
 
   useEffect(() => {
     if (!cfg) return;
+    setLoading(true);
     load();
     const interval = setInterval(load, 15000);
     return () => clearInterval(interval);
-  }, [cfg, load]);
+  }, [cfg, sort, load]);
+
+  const totalVol5m = pairs.reduce((s, p) => s + (p.volume?.m5 ?? 0), 0);
+  const totalTxns5m = pairs.reduce((s, p) => s + Object.values(p.txns?.m5 ?? {}).reduce((a, b) => a + (b || 0), 0), 0);
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold flex items-center gap-2">
-          <TrendingUp size={20} className="text-accent" /> Discover
-        </h1>
-        <button onClick={load} className="text-muted p-2">
-          <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-        </button>
+    <div>
+      <div className="sticky top-0 z-10 bg-base/95 backdrop-blur border-b border-border p-3 space-y-3">
+        <div className="flex gap-2">
+          {([
+            { key: "trending", label: "🔥 Trending" },
+            { key: "new", label: "🌱 New" },
+            { key: "top", label: "📊 Top" },
+          ] as { key: SortMode; label: string }[]).map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setSort(t.key)}
+              className={clsx(
+                "px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap",
+                sort === t.key ? "bg-accent text-black" : "bg-surface2 text-muted"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+          <button onClick={load} className="ml-auto text-muted p-1.5">
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-surface2 rounded-xl px-3 py-2 text-center">
+            <div className="text-[10px] text-muted uppercase tracking-wide">5M Volume</div>
+            <div className="text-sm font-semibold">{formatUsd(totalVol5m)}</div>
+          </div>
+          <div className="bg-surface2 rounded-xl px-3 py-2 text-center">
+            <div className="text-[10px] text-muted uppercase tracking-wide">5M Txns</div>
+            <div className="text-sm font-semibold">{totalTxns5m.toLocaleString()}</div>
+          </div>
+        </div>
       </div>
 
-      {error && <div className="card mb-3 text-danger text-sm">{error}</div>}
+      {error && <div className="card m-3 text-danger text-sm">{error}</div>}
       {!error && pairs.length === 0 && (
-        <div className="card text-muted text-sm text-center py-8">
+        <div className="text-muted text-sm text-center py-10 px-4">
           {loading ? "Scanning for candidates…" : "No tokens currently pass your filters. Loosen them in Config."}
         </div>
       )}
 
-      <div className="space-y-3">
+      <div>
         {pairs.map((p) => {
           const mint = p.baseToken.address;
-          const mcap = p.marketCap ?? p.fdv ?? 0;
-          const initial = initialMc[mint] ?? mcap;
-          const mcapChangePct = initial > 0 ? ((mcap - initial) / initial) * 100 : 0;
-
+          const change24h = p.priceChange?.h24;
+          const change5m = p.priceChange?.m5;
           return (
-            <Link key={p.pairAddress} href={`/token/${mint}`} className="card flex items-center gap-3 block">
-              <div className="w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-sm font-semibold shrink-0">
-                {p.baseToken.symbol.slice(0, 3)}
+            <Link
+              key={p.pairAddress}
+              href={`/token/${mint}`}
+              className="flex items-center gap-3 px-3 py-3 border-b border-border active:bg-surface2 block"
+            >
+              <div className="w-10 h-10 rounded-full bg-surface2 overflow-hidden shrink-0 relative">
+                {p.info?.imageUrl ? (
+                  <Image src={p.info.imageUrl} alt={p.baseToken.symbol} fill sizes="40px" className="object-cover" unoptimized />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs font-semibold">
+                    {p.baseToken.symbol.slice(0, 3)}
+                  </div>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium truncate">{p.baseToken.symbol}</span>
-                  <span className="text-sm">{formatUsd(mcap)}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted mt-0.5">
-                  <span>Age {formatAge(p.pairCreatedAt)} · Liq {formatUsd(p.liquidity?.usd)}</span>
-                  <span className={mcapChangePct >= 0 ? "text-accent" : "text-danger"}>
-                    {formatPct(mcapChangePct)} since fetch
+                  <span className="font-semibold text-sm truncate">{p.baseToken.symbol}</span>
+                  <span className="text-sm font-medium">
+                    {Number(p.priceUsd ?? 0) < 0.01
+                      ? `$${Number(p.priceUsd ?? 0).toPrecision(3)}`
+                      : formatUsd(Number(p.priceUsd ?? 0))}
                   </span>
+                </div>
+                <div className="flex items-center justify-between text-xs mt-0.5">
+                  <span className="text-muted truncate">{p.baseToken.name}</span>
+                  <span className="flex gap-2">
+                    {change5m !== undefined && (
+                      <span className={change5m >= 0 ? "text-accent" : "text-danger"}>{formatPct(change5m)}</span>
+                    )}
+                    {change24h !== undefined && (
+                      <span className={clsx("font-medium", change24h >= 0 ? "text-accent" : "text-danger")}>
+                        {formatPct(change24h)}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <div className="flex gap-1.5 mt-1.5">
+                  <span className="pill bg-surface2 text-muted">LIQ {formatUsd(p.liquidity?.usd)}</span>
+                  <span className="pill bg-surface2 text-muted">VOL {formatUsd(p.volume?.h24)}</span>
+                  <span className="pill bg-surface2 text-muted">MC {formatUsd(p.marketCap ?? p.fdv)}</span>
+                  <span className="pill bg-surface2 text-muted ml-auto">{formatAge(p.pairCreatedAt)}</span>
                 </div>
               </div>
             </Link>

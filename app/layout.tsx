@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SolanaProviders from "@/components/SolanaProviders";
+import { LocalWalletProvider } from "@/components/LocalWalletProvider";
 import TabBar from "@/components/TabBar";
 
 export const metadata: Metadata = {
@@ -13,8 +14,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <SolanaProviders>
-          <main className="tabbar-safe min-h-screen">{children}</main>
-          <TabBar />
+          <LocalWalletProvider>
+            <main className="tabbar-safe min-h-screen">{children}</main>
+            <TabBar />
+          </LocalWalletProvider>
         </SolanaProviders>
       </body>
     </html>
