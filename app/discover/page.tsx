@@ -11,16 +11,18 @@ import clsx from "clsx";
 
 type SortMode = "trending" | "new" | "top";
 
+interface Snapshot { priceUsd: number; marketCap: number; liquidity: number }
+type SnapMap = Record<string, Snapshot>;
+
 export default function DiscoverPage() {
   const [sort, setSort] = useState<SortMode>("trending");
   const [pairs, setPairs] = useState<DexPair[]>([]);
+  const [snapshots, setSnapshots] = useState<SnapMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cfg, setCfg] = useState<StrategyConfig | null>(null);
 
-  useEffect(() => {
-    setCfg(store.getConfig());
-  }, []);
+  useEffect(() => { setCfg(store.getConfig()); }, []);
 
   const load = useCallback(async () => {
     if (!cfg) return;
@@ -33,126 +35,156 @@ export default function DiscoverPage() {
         maxTokenAgeMinutes: String(cfg.discovery.maxTokenAgeMinutes),
         min5mVolumeUsd: String(cfg.discovery.min5mVolumeUsd),
       });
-      const res = await fetch(`/api/discover?${q.toString()}`);
+      const res = await fetch(`/api/discover?${q}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      const blacklist = store.getBlacklist();
-      const filtered: DexPair[] = data.pairs.filter((p: DexPair) => !blacklist.includes(p.baseToken.address));
+      const bl = store.getBlacklist();
+      const filtered: DexPair[] = data.pairs.filter((p: DexPair) => !bl.includes(p.baseToken.address));
       setPairs(filtered);
       store.recordScannedTokens(data.pairs);
+      setSnapshots(prev => {
+        const next = { ...prev };
+        for (const p of filtered) {
+          if (!next[p.baseToken.address]) {
+            next[p.baseToken.address] = {
+              priceUsd: Number(p.priceUsd ?? 0),
+              marketCap: p.marketCap ?? p.fdv ?? 0,
+              liquidity: p.liquidity?.usd ?? 0,
+            };
+          }
+        }
+        return next;
+      });
       setError(null);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
   }, [cfg, sort]);
 
   useEffect(() => {
     if (!cfg) return;
     setLoading(true);
     load();
-    const interval = setInterval(load, 15000);
-    return () => clearInterval(interval);
+    const iv = setInterval(load, 15000);
+    return () => clearInterval(iv);
   }, [cfg, sort, load]);
 
-  const totalVol5m = pairs.reduce((s, p) => s + (p.volume?.m5 ?? 0), 0);
-  const totalTxns5m = pairs.reduce((s, p) => s + Object.values(p.txns?.m5 ?? {}).reduce((a, b) => a + (b || 0), 0), 0);
+  const totalVol = pairs.reduce((s, p) => s + (p.volume?.m5 ?? 0), 0);
 
   return (
-    <div>
-      <div className="sticky top-0 z-10 bg-base/95 backdrop-blur border-b border-border p-3 space-y-3">
-        <div className="flex gap-2">
+    <div className="flex flex-col" style={{ minHeight: "calc(100vh - 120px)" }}>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 px-3 pt-2 pb-2"
+        style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
+
+        <div className="flex items-center gap-2 mb-2">
           {([
-            { key: "trending", label: "🔥 Trending" },
-            { key: "new", label: "🌱 New" },
-            { key: "top", label: "📊 Top" },
-          ] as { key: SortMode; label: string }[]).map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setSort(t.key)}
-              className={clsx(
-                "px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap",
-                sort === t.key ? "bg-accent text-black" : "bg-surface2 text-muted"
-              )}
-            >
-              {t.label}
+            { k: "trending" as SortMode, l: "🔥 Trending" },
+            { k: "new" as SortMode, l: "🌱 New" },
+            { k: "top" as SortMode, l: "📊 Top" },
+          ]).map(t => (
+            <button key={t.k} onClick={() => setSort(t.k)}
+              className={clsx("px-3 py-1 rounded-full text-2xs font-semibold",
+                sort === t.k
+                  ? "bg-accent text-white"
+                  : "bg-[var(--card2)] text-[var(--muted)]")}>
+              {t.l}
             </button>
           ))}
-          <button onClick={load} className="ml-auto text-muted p-1.5">
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-          </button>
-          <Link href="/discover/history" className="text-muted p-1.5">
-            <History size={16} />
-          </Link>
+          <div className="ml-auto flex items-center gap-1.5">
+            <Link href="/discover/history" className="text-[var(--muted)] p-1">
+              <History size={15} />
+            </Link>
+            <button onClick={load} className="text-[var(--muted)] p-1">
+              <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+            </button>
+          </div>
         </div>
+
+        {/* Stats bar */}
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-surface2 rounded-xl px-3 py-2 text-center">
-            <div className="text-[10px] text-muted uppercase tracking-wide">5M Volume</div>
-            <div className="text-sm font-semibold">{formatUsd(totalVol5m)}</div>
-          </div>
-          <div className="bg-surface2 rounded-xl px-3 py-2 text-center">
-            <div className="text-[10px] text-muted uppercase tracking-wide">5M Txns</div>
-            <div className="text-sm font-semibold">{totalTxns5m.toLocaleString()}</div>
-          </div>
+          {[
+            { l: "5M VOLUME", v: formatUsd(totalVol) },
+            { l: "PAIRS",     v: pairs.length.toLocaleString() },
+          ].map(s => (
+            <div key={s.l} className="surface !py-2 text-center">
+              <div className="text-2xs text-[var(--muted)] uppercase tracking-wide">{s.l}</div>
+              <div className="text-xs font-semibold text-[var(--txt)] mt-0.5">{s.v}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {error && <div className="card m-3 text-danger text-sm">{error}</div>}
+      {error && <div className="m-3 surface text-danger text-xs">{error}</div>}
       {!error && pairs.length === 0 && (
-        <div className="text-muted text-sm text-center py-10 px-4">
-          {loading ? "Scanning for candidates…" : "No tokens currently pass your filters. Loosen them in Config."}
+        <div className="text-center py-12 text-xs text-[var(--muted)]">
+          {loading ? "Scanning…" : "No tokens pass current filters. Loosen them in Config."}
         </div>
       )}
 
-      <div>
-        {pairs.map((p) => {
+      <div className="divide-y divide-[var(--border)]">
+        {pairs.map(p => {
           const mint = p.baseToken.address;
-          const change24h = p.priceChange?.h24;
-          const change5m = p.priceChange?.m5;
+          const snap = snapshots[mint];
+          const curMc = p.marketCap ?? p.fdv ?? 0;
+          const curPrice = Number(p.priceUsd ?? 0);
+          const mcDelta = snap && snap.marketCap > 0 ? ((curMc - snap.marketCap) / snap.marketCap) * 100 : null;
+          const c24 = p.priceChange?.h24;
+          const c5m = p.priceChange?.m5;
+
           return (
-            <Link
-              key={p.pairAddress}
-              href={`/token/${mint}`}
-              className="flex items-center gap-3 px-3 py-3 border-b border-border active:bg-surface2 block"
-            >
-              <div className="w-10 h-10 rounded-full bg-surface2 overflow-hidden shrink-0 relative">
-                {p.info?.imageUrl ? (
-                  <Image src={p.info.imageUrl} alt={p.baseToken.symbol} fill sizes="40px" className="object-cover" unoptimized />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs font-semibold">
-                    {p.baseToken.symbol.slice(0, 3)}
+            <Link key={p.pairAddress} href={`/token/${mint}`}
+              className="flex items-center gap-2.5 px-3 py-2.5 block active:bg-[var(--card2)]">
+
+              {/* Logo */}
+              <div className="w-9 h-9 rounded-full bg-[var(--card2)] overflow-hidden shrink-0 relative">
+                {p.info?.imageUrl
+                  ? <Image src={p.info.imageUrl} alt="" fill sizes="36px" className="object-cover" unoptimized />
+                  : <div className="w-full h-full flex items-center justify-center text-2xs font-bold text-[var(--muted)]">
+                      {p.baseToken.symbol.slice(0, 3)}
+                    </div>
+                }
+              </div>
+
+              {/* Middle */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-[var(--txt)]">{p.baseToken.symbol}</span>
+                  {c5m !== undefined && (
+                    <span className={`text-2xs font-medium ${c5m >= 0 ? "text-accent" : "text-danger"}`}>
+                      5M {formatPct(c5m)}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-2xs text-[var(--muted)]">LIQ {formatUsd(p.liquidity?.usd)}</span>
+                  <span className="text-2xs text-[var(--muted)]">MC {formatUsd(curMc)}</span>
+                  <span className="text-2xs text-[var(--muted)]">{formatAge(p.pairCreatedAt)}</span>
+                </div>
+                {/* Initial vs current at fetch */}
+                {snap && (
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-2xs text-[var(--muted)]">
+                      Init MC {formatUsd(snap.marketCap)}
+                    </span>
+                    {mcDelta !== null && (
+                      <span className={`text-2xs font-medium ${mcDelta >= 0 ? "text-accent" : "text-danger"}`}>
+                        {formatPct(mcDelta)} since fetch
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-sm truncate">{p.baseToken.symbol}</span>
-                  <span className="text-sm font-medium">
-                    {Number(p.priceUsd ?? 0) < 0.01
-                      ? `$${Number(p.priceUsd ?? 0).toPrecision(3)}`
-                      : formatUsd(Number(p.priceUsd ?? 0))}
-                  </span>
+
+              {/* Right */}
+              <div className="text-right shrink-0">
+                <div className="text-xs font-semibold text-[var(--txt)]">
+                  {curPrice < 0.01 ? `$${curPrice.toPrecision(3)}` : formatUsd(curPrice)}
                 </div>
-                <div className="flex items-center justify-between text-xs mt-0.5">
-                  <span className="text-muted truncate">{p.baseToken.name}</span>
-                  <span className="flex gap-2">
-                    {change5m !== undefined && (
-                      <span className={change5m >= 0 ? "text-accent" : "text-danger"}>{formatPct(change5m)}</span>
-                    )}
-                    {change24h !== undefined && (
-                      <span className={clsx("font-medium", change24h >= 0 ? "text-accent" : "text-danger")}>
-                        {formatPct(change24h)}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex gap-1.5 mt-1.5">
-                  <span className="pill bg-surface2 text-muted">LIQ {formatUsd(p.liquidity?.usd)}</span>
-                  <span className="pill bg-surface2 text-muted">VOL {formatUsd(p.volume?.h24)}</span>
-                  <span className="pill bg-surface2 text-muted">MC {formatUsd(p.marketCap ?? p.fdv)}</span>
-                  <span className="pill bg-surface2 text-muted ml-auto">{formatAge(p.pairCreatedAt)}</span>
-                </div>
+                {c24 !== undefined && (
+                  <div className={`text-2xs font-medium mt-0.5 ${c24 >= 0 ? "text-accent" : "text-danger"}`}>
+                    24H {formatPct(c24)}
+                  </div>
+                )}
               </div>
             </Link>
           );

@@ -1,21 +1,31 @@
 import type { Config } from "tailwindcss";
-
 const config: Config = {
+  darkMode: "class",
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        base: "#0B0E11",
-        surface: "#12161C",
-        surface2: "#181D25",
-        border: "#232933",
-        accent: "#22D3A8",
-        danger: "#F04452",
-        warn: "#F0B429",
-        muted: "#8A94A6",
+        bg:       "var(--bg)",
+        card:     "var(--card)",
+        card2:    "var(--card2)",
+        border:   "var(--border)",
+        txt:      "var(--txt)",
+        sub:      "var(--sub)",
+        muted:    "var(--muted)",
+        accent:   "#10B981",
+        danger:   "#EF4444",
+        warn:     "#F59E0B",
       },
-      borderRadius: {
-        xl2: "1.25rem",
+      borderRadius: { xl2: "1.125rem", xl3: "1.5rem" },
+      fontSize: {
+        "2xs": ["10px", "14px"],
+        xs:    ["11px", "16px"],
+        sm:    ["12px", "17px"],
+        base:  ["13px", "19px"],
+        lg:    ["15px", "22px"],
+        xl:    ["17px", "24px"],
+        "2xl": ["20px", "28px"],
+        "3xl": ["26px", "34px"],
       },
     },
   },

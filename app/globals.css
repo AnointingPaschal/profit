@@ -2,27 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---- Light theme (default) ---- */
+:root {
+  --bg:     #F4F6FA;
+  --card:   #FFFFFF;
+  --card2:  #F0F2F7;
+  --border: #E4E7EF;
+  --txt:    #0F1729;
+  --sub:    #374256;
+  --muted:  #7B869B;
+}
+
+/* ---- Dark theme ---- */
+.dark {
+  --bg:     #0B0E14;
+  --card:   #141920;
+  --card2:  #1C2230;
+  --border: #232D3F;
+  --txt:    #EEF0F5;
+  --sub:    #B2BCCC;
+  --muted:  #5F6E87;
+}
+
 html, body {
-  background-color: #0B0E11;
-  color: #E6E9ED;
+  background-color: var(--bg);
+  color: var(--txt);
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
-  position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-::-webkit-scrollbar {
-  display: none;
-}
+::-webkit-scrollbar { display: none; }
 
-.card {
-  @apply bg-surface border border-border rounded-xl2 p-4;
-}
+/* Safe-area padding for tab bar */
+.tabbar-safe { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
-.pill {
-  @apply text-xs px-2 py-0.5 rounded-full font-medium;
-}
+/* Pill badge */
+.pill { @apply text-2xs px-1.5 py-0.5 rounded-full font-medium; }
 
-.tabbar-safe {
-  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+/* Icon action button (Send, Receive, etc.) */
+.action-btn {
+  @apply flex flex-col items-center gap-1.5;
+}
+.action-btn .icon {
+  @apply w-11 h-11 rounded-xl2 bg-txt text-bg flex items-center justify-center;
+}
+.dark .action-btn .icon {
+  @apply bg-card2;
+  color: var(--txt);
+}
+.action-btn span { @apply text-2xs text-sub; }
+
+/* Generic surface card */
+.surface {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1.125rem;
+  padding: 0.875rem;
 }

@@ -2,23 +2,28 @@ import type { Metadata } from "next";
 import "./globals.css";
 import SolanaProviders from "@/components/SolanaProviders";
 import { LocalWalletProvider } from "@/components/LocalWalletProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import TabBar from "@/components/TabBar";
+import TopBar from "@/components/TopBar";
 
 export const metadata: Metadata = {
-  title: "Profit — Solana Sniper",
-  description: "Low-mcap Solana token discovery, sniping, and portfolio tracking.",
+  title: "Profit",
+  description: "Solana token discovery & trading dashboard",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <SolanaProviders>
-          <LocalWalletProvider>
-            <main className="tabbar-safe min-h-screen">{children}</main>
-            <TabBar />
-          </LocalWalletProvider>
-        </SolanaProviders>
+        <ThemeProvider>
+          <SolanaProviders>
+            <LocalWalletProvider>
+              <TopBar />
+              <main className="tabbar-safe">{children}</main>
+              <TabBar />
+            </LocalWalletProvider>
+          </SolanaProviders>
+        </ThemeProvider>
       </body>
     </html>
   );

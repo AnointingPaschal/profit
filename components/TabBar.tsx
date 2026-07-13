@@ -6,38 +6,38 @@ import { Compass, Wallet2, LineChart, ArrowLeftRight, Settings } from "lucide-re
 import clsx from "clsx";
 
 const tabs = [
-  { href: "/discover", label: "Discover", icon: Compass },
-  { href: "/positions", label: "Positions", icon: LineChart },
-  { href: "/trade", label: "Trade", icon: ArrowLeftRight },
-  { href: "/wallet", label: "Wallet", icon: Wallet2 },
-  { href: "/config", label: "Config", icon: Settings },
+  { href: "/discover", icon: Compass,      label: "Discover" },
+  { href: "/positions", icon: LineChart,   label: "Positions" },
+  { href: "/trade",     icon: ArrowLeftRight, label: "Trade" },
+  { href: "/wallet",    icon: Wallet2,     label: "Wallet" },
+  { href: "/config",    icon: Settings,    label: "Config" },
 ];
 
 export default function TabBar() {
   const pathname = usePathname();
-
   return (
     <nav
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface/95 backdrop-blur
-                 border-t border-border flex justify-around items-center py-2 z-50"
-      style={{ paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-50"
+      style={{
+        background: "var(--card)",
+        borderTop: "1px solid var(--border)",
+        paddingBottom: "calc(6px + env(safe-area-inset-bottom))",
+      }}
     >
-      {tabs.map(({ href, label, icon: Icon }) => {
-        const active = pathname?.startsWith(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={clsx(
-              "flex flex-col items-center gap-1 px-3 py-1 rounded-lg text-[11px]",
-              active ? "text-accent" : "text-muted"
-            )}
-          >
-            <Icon size={20} strokeWidth={active ? 2.5 : 2} />
-            {label}
-          </Link>
-        );
-      })}
+      <div className="flex justify-around items-center py-1.5">
+        {tabs.map(({ href, icon: Icon, label }) => {
+          const active = pathname?.startsWith(href);
+          return (
+            <Link key={href} href={href}
+              className={clsx("flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg",
+                active ? "text-accent" : "text-[var(--muted)]")}
+            >
+              <Icon size={18} strokeWidth={active ? 2.5 : 1.8} />
+              <span className="text-2xs">{label}</span>
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

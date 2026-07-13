@@ -134,7 +134,7 @@ function SendPageInner() {
   if (!vault) {
     return (
       <div className="p-4">
-        <div className="card text-sm text-muted">
+        <div className="card text-sm text-[var(--muted)]">
           You need a wallet first — go to the Wallet tab and create or import one.
         </div>
       </div>
@@ -144,32 +144,32 @@ function SendPageInner() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center gap-3">
-        <button onClick={() => router.back()} className="text-muted"><ArrowLeft size={20} /></button>
+        <button onClick={() => router.back()} className="text-[var(--muted)]"><ArrowLeft size={20} /></button>
         <h1 className="text-lg font-semibold">Send</h1>
       </div>
 
       {!isUnlocked ? (
-        <div className="card space-y-3">
-          <p className="text-sm text-muted">Enter your password to unlock this wallet for sending.</p>
+        <div className="surface space-y-3">
+          <p className="text-sm text-[var(--muted)]">Enter your password to unlock this wallet for sending.</p>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Wallet password"
-            className="w-full bg-surface2 rounded-xl px-3 py-2 text-sm outline-none"
+            className="w-full bg-[var(--card2)] rounded-xl px-3 py-2 text-sm outline-none"
           />
           {unlockError && <div className="text-danger text-xs">{unlockError}</div>}
-          <button onClick={handleUnlock} className="w-full bg-accent text-black font-semibold rounded-xl2 py-3">
+          <button onClick={handleUnlock} className="w-full bg-accent text-white font-semibold rounded-xl2 py-3">
             Unlock
           </button>
         </div>
       ) : (
-        <div className="card space-y-3">
-          <label className="block text-xs text-muted">Asset</label>
+        <div className="surface space-y-3">
+          <label className="block text-xs text-[var(--muted)]">Asset</label>
           <select
             value={selectedMint}
             onChange={(e) => setSelectedMint(e.target.value)}
-            className="w-full bg-surface2 rounded-xl px-3 py-2 text-sm outline-none"
+            className="w-full bg-[var(--card2)] rounded-xl px-3 py-2 text-sm outline-none"
           >
             <option value="SOL">SOL — {solBalance.toFixed(4)}</option>
             {holdings.map((h) => (
@@ -179,35 +179,35 @@ function SendPageInner() {
             ))}
           </select>
 
-          <label className="block text-xs text-muted">Recipient address</label>
+          <label className="block text-xs text-[var(--muted)]">Recipient address</label>
           <input
             value={recipient}
             onChange={(e) => setRecipient(e.target.value)}
             placeholder="Solana address"
-            className="w-full bg-surface2 rounded-xl px-3 py-2 text-sm outline-none"
+            className="w-full bg-[var(--card2)] rounded-xl px-3 py-2 text-sm outline-none"
           />
 
-          <label className="block text-xs text-muted">Amount</label>
+          <label className="block text-xs text-[var(--muted)]">Amount</label>
           <div className="flex gap-2">
             <input
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               type="number"
               placeholder="0.00"
-              className="flex-1 bg-surface2 rounded-xl px-3 py-2 text-sm outline-none"
+              className="flex-1 bg-[var(--card2)] rounded-xl px-3 py-2 text-sm outline-none"
             />
-            <button onClick={handleMax} className="px-3 border border-border rounded-xl text-xs">Max</button>
+            <button onClick={handleMax} className="px-3 border border-[var(--border)] rounded-xl text-xs">Max</button>
           </div>
-          {selected && <div className="text-xs text-muted">Available: {selected.amount.toLocaleString(undefined, { maximumFractionDigits: 4 })} {selected.symbol}</div>}
+          {selected && <div className="text-xs text-[var(--muted)]">Available: {selected.amount.toLocaleString(undefined, { maximumFractionDigits: 4 })} {selected.symbol}</div>}
 
           <button
             onClick={send}
             disabled={sending || !recipient || !amount}
-            className="w-full bg-accent text-black font-semibold rounded-xl2 py-3 disabled:opacity-40"
+            className="w-full bg-accent text-white font-semibold rounded-xl2 py-3 disabled:opacity-40"
           >
             {sending ? "Sending…" : "Send"}
           </button>
-          {status && <div className="text-xs text-muted break-all">{status}</div>}
+          {status && <div className="text-xs text-[var(--muted)] break-all">{status}</div>}
         </div>
       )}
     </div>
@@ -216,7 +216,7 @@ function SendPageInner() {
 
 export default function SendPage() {
   return (
-    <Suspense fallback={<div className="p-4 text-muted text-sm">Loading…</div>}>
+    <Suspense fallback={<div className="p-4 text-[var(--muted)] text-sm">Loading…</div>}>
       <SendPageInner />
     </Suspense>
   );
